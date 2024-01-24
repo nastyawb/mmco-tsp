@@ -9,7 +9,7 @@ def get_nodes_arcs_starting_node(N):
     nodes = tuple(_ for _ in range(N))  # set of nodes
     arcs = tuple((i, j) for i in nodes for j in nodes  # set of arcs
                  if (i != j))
-    random.seed(10)
+    # random.seed(10)
     starting_node = random.choice(nodes)  # arbitrarily selected starting node
     nodes_wo_starting_node = tuple(_ for _ in nodes if _ != starting_node)  # set of nodes without starting_node
 

@@ -1,8 +1,13 @@
 from configs import (nodes_number_values,
-                     tests_number)
+                     tests_number,
+                     max_x, max_y)
+from params import (get_nodes_arcs_starting_node,
+                    get_distances_UNI,
+                    get_distances_REG)
 from model_1 import CplexModel1
 from model_2 import CplexModel2
 from local_search import LocalSearch
+from calibration import calibrate
 from matplotlib import pyplot as plt
 from rich.progress import Progress
 
@@ -32,14 +37,33 @@ def plot_res(dct_UNI_m1, dct_REG_m1, dct_UNI_m2, dct_REG_m2, dct_UNI_ls, dct_REG
 
 class Evaluation:
 
-    def __init__(self, n, flag):
+    def __init__(self, n, flag, length, max_iter):
         self.n = n
-        self.m1 = CplexModel1(self.n, flag)
-        self.m2 = CplexModel2(self.n, flag)
-        self.ls = LocalSearch(self.n, flag)
+        self.flag = flag
+        self.nodes, self.nodes_wo_starting_node, self.arcs, self.starting_node = get_nodes_arcs_starting_node(self.n)
+        self.coords, self.costs = self.choose_case()
+
+        self.m1 = CplexModel1(self.n, self.flag)
+        self.m2 = CplexModel2(self.n, self.flag)
+
+        self.ls = LocalSearch(self.n, self.flag, length, max_iter)
         self.solution = None
 
+    def choose_case(self):
+        if self.flag == 'uni':
+            self.coords, self.costs = get_distances_UNI(self.n, max_x, max_y)
+        elif self.flag == 'reg':
+            self.coords, self.costs = get_distances_REG(self.n, max_x, max_y)
+        return self.coords, self.costs
+
+    def set_model_params(self, m):
+        m.nodes, m.nodes_wo_starting_node, m.arcs, m.starting_node = self.nodes, \
+            self.nodes_wo_starting_node, self.arcs, self.starting_node
+        m.coords = self.coords
+        m.costs = self.costs
+
     def optimize_model(self, m, nodes_number_time):
+        self.set_model_params(m)
         m.optimize_model()
         nodes_number_time[self.n].append((m.solving_end - m.solving_start).total_seconds())
 
@@ -60,23 +84,27 @@ if __name__ == '__main__':
     nodes_number_time_REG_m2 = {_: [] for _ in nodes_number_values}
     avr_time_UNI_m2, avr_time_REG_m2 = {}, {}
 
+    tl_params_UNI = calibrate('uni')
     nodes_number_time_UNI_ls = {_: [] for _ in nodes_number_values}
+    tl_params_REG = calibrate('reg')
     nodes_number_time_REG_ls = {_: [] for _ in nodes_number_values}
     avr_time_UNI_ls, avr_time_REG_ls = {}, {}
 
     with Progress() as progress:
-        nodes_pr = progress.add_task("[cyan]Number of nodes", total=len(nodes_number_values))
-        tests_pr = progress.add_task(f"[magenta]{tests_number} tests for each number", total=tests_number)
+        nodes_pr = progress.add_task("[cyan]Evaluating time for each number of nodes",
+                                     total=len(nodes_number_values))
+        tests_pr = progress.add_task(f"[magenta]Running {tests_number} tests for each number of nodes",
+                                     total=tests_number)
 
         for i in nodes_number_values:
 
             for j in range(tests_number):
-                evl_UNI = Evaluation(i, 'uni')
+                evl_UNI = Evaluation(i, 'uni', tl_params_UNI[i]['length'], tl_params_UNI[i]['max iter'])
                 evl_UNI.optimize_model(evl_UNI.m1, nodes_number_time_UNI_m1)
                 evl_UNI.optimize_model(evl_UNI.m2, nodes_number_time_UNI_m2)
                 evl_UNI.solve_ls(nodes_number_time_UNI_ls)
 
-                evl_REG = Evaluation(i, 'reg')
+                evl_REG = Evaluation(i, 'reg', tl_params_REG[i]['length'], tl_params_REG[i]['max iter'])
                 evl_REG.optimize_model(evl_REG.m1, nodes_number_time_REG_m1)
                 evl_REG.optimize_model(evl_REG.m2, nodes_number_time_REG_m2)
                 evl_REG.solve_ls(nodes_number_time_REG_ls)

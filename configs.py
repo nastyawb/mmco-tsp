@@ -13,7 +13,7 @@ dist_sq = 20  # distance between areas, Ox
 dist_line = 20  # distance between all areas and a line, Oy
 
 # EVALUATION
-max_N = 10  # number of nodes for model performance evaluation
+max_N = 30  # number of nodes for model performance evaluation
 nodes_number_values = tuple(range(4, max_N))  # tuple of different values: (4, ... , max_N - 1)
 tests_number = 10  # numer of tests we run for each number of nodes
 curr_avr_time = -1  # starting value of average computing time for performance evaluation
@@ -21,7 +21,7 @@ curr_avr_time = -1  # starting value of average computing time for performance e
 # CALIBRATION
 ts_list_length = tuple(range(max_N))
 max_iter = tuple(range(10))
-samples_number = 60
+samples_number = 30
 
 # comp_time_intervals = [[0, 0.1], [0.1 + 1e-5, 0.5], [0.5 + 1e-5, 1], [1 + 1e-5, 5], [5 + 1e-5, 10]]
 comp_time_intervals = [[0, 0.1],
