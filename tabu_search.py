@@ -8,11 +8,20 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 
 
-class LocalSearch:
+def solve_ts(nodes_number, case_flag, init_path_flag, length, max_iter):
+    ls = TabuSearch(nodes_number, case_flag, length, max_iter, init_path_flag)
+    ls.optimize_model()
+    print(ls.plot_path(ls.get_initial_path_greedy()))
+    print(ls.plot_path(ls.best_path))
+    print(ls.obj_val)
 
-    def __init__(self, N, flag, tl_len, n_iter):
+
+class TabuSearch:
+
+    def __init__(self, N, case_flag, tl_len, n_iter, init_path_flag):
         self.N = N
-        self.flag = flag
+        self.case_flag = case_flag
+        self.init_path_flag = init_path_flag
         self.nodes, self.nodes_wo_starting_node, self.arcs, self.starting_node = get_nodes_arcs_starting_node(self.N)
 
         self.coords, self.costs = self.choose_case()
@@ -28,25 +37,21 @@ class LocalSearch:
         self.n_iter = n_iter
 
     def choose_case(self):
-        if self.flag == 'uni':
+        if self.case_flag == 'uni':
             self.coords, self.costs = get_distances_UNI(self.N, max_x, max_y)
-        elif self.flag == 'reg':
+        elif self.case_flag == 'reg':
             self.coords, self.costs = get_distances_REG(self.N, max_x, max_y)
         return self.coords, self.costs
 
-    def get_initial_path_1(self):
-        # print(f'Starting node: {self.starting_node}')
+    def get_initial_path_random(self):
         # random.seed(11)
         perturbed_nodes = random.sample(self.nodes, k=len(self.nodes))
-        # print(f'Before aligning: {perturbed_nodes}')
         init_path = perturbed_nodes[perturbed_nodes.index(self.starting_node):] + \
                     perturbed_nodes[:perturbed_nodes.index(self.starting_node)]
-        # print(perturbed_nodes[perturbed_nodes.index(self.starting_node):],
-        #      perturbed_nodes[:perturbed_nodes.index(self.starting_node)])
-        # print(f'Perturbed path: {init_path}')
+        # print(f'Init path: {init_path}')
         return init_path
 
-    def get_initial_path(self):
+    def get_initial_path_greedy(self):
         init_path = [self.starting_node]
         for node in range(len(self.nodes_wo_starting_node)):
             pot_sotred_by_cost = sorted(range(len(self.costs[init_path[-1]])),
@@ -70,14 +75,15 @@ class LocalSearch:
         return cost_value
 
     def optimize_model(self):
-        path = self.get_initial_path()
+        if self.init_path_flag == 'random':
+            path = self.get_initial_path_random()
+        else:
+            path = self.get_initial_path_greedy()
         best_cost = self.compute_path_cost(path)
 
         tabu_list = []
         k = 0
         improved = True
-
-        iters = 0
 
         self.solving_start = datetime.now()
 
@@ -142,8 +148,4 @@ class LocalSearch:
 
 
 if __name__ == '__main__':
-    ls = LocalSearch(22, 'reg', 6, 5)
-    ls.optimize_model()
-    print(ls.plot_path(ls.get_initial_path()))
-    print(ls.plot_path(ls.best_path))
-    print(ls.obj_val)
+    solve_ts(10, 'uni', 'greedy', 6, 3)

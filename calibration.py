@@ -1,6 +1,6 @@
 import pandas as pd
 from rich.progress import Progress
-from local_search import LocalSearch
+from tabu_search import TabuSearch
 from model_1 import CplexModel1
 from configs import (max_x,
                      max_y,
@@ -13,38 +13,39 @@ from params import (get_nodes_arcs_starting_node,
                     get_distances_REG)
 
 
-def calibrate(flag):
+def calibrate(case_flag, init_path_flag):
     nodes_length_iter_train = {}
     nodes_length_iter_params = {}
     nodes_length_iter_test = {}
 
     with Progress() as progress:
-        nodes_pr = progress.add_task(f"[cyan]Calibrating TS parameters for each number of nodes ({flag})",
+        nodes_pr = progress.add_task(f"[cyan]Calibrating TS parameters for each number of nodes ({case_flag})",
                                      total=len(nodes_number_values))
 
         for nodes in nodes_number_values:
-            calibr = Calibration(flag, nodes)
+            calibr = Calibration(case_flag, nodes, init_path_flag)
             calibr.train(nodes_length_iter_train)
             calibr.test(nodes_length_iter_train, nodes_length_iter_params, nodes_length_iter_test)
 
             progress.update(nodes_pr, completed=nodes - 3 + 1)
 
     df_train = pd.DataFrame.from_dict(nodes_length_iter_train, orient='index')
-    df_train.to_excel(f"train_info_{flag}.xlsx")
+    df_train.to_excel(f"train_info_{case_flag}_{init_path_flag}.xlsx")
 
     df_params = pd.DataFrame.from_dict(nodes_length_iter_params, orient='index')
-    df_params.to_excel(f"params_info_{flag}.xlsx")
+    df_params.to_excel(f"params_info_{case_flag}_{init_path_flag}.xlsx")
 
     df_test = pd.DataFrame.from_dict(nodes_length_iter_test, orient='index')
-    df_test.to_excel(f"test_info_{flag}.xlsx")
+    df_test.to_excel(f"test_info_{case_flag}_{init_path_flag}.xlsx")
     return nodes_length_iter_params
 
 
 class Calibration:
 
-    def __init__(self, flag, N):
-        self.flag = flag
+    def __init__(self, case_flag, N, init_path_flag):
+        self.case_flag = case_flag
         self.N = N
+        self.init_path_flag = init_path_flag
         self.nodes, self.nodes_wo_starting_node, self.arcs, self.starting_node = get_nodes_arcs_starting_node(self.N)
 
         self.samples_coords = []
@@ -54,9 +55,9 @@ class Calibration:
         self.costs_train, self.costs_test = [], []
 
     def choose_case(self):
-        if self.flag == 'uni':
+        if self.case_flag == 'uni':
             self.create_samples_UNI()
-        elif self.flag == 'reg':
+        elif self.case_flag == 'reg':
             self.create_samples_REG()
 
     def create_samples_UNI(self):
@@ -105,19 +106,19 @@ class Calibration:
         for length in ts_list_length:
             for i in max_iter:
                 nodes_length_iter_train[self.N][(length, i)] = 0
-        # print(f'CHECK {self.N} -- {nodes_length_iter_train[self.N]}')
+        # print(f'CHECK {self.nodes_number} -- {nodes_length_iter_train[self.nodes_number]}')
         for l in range(len(self.coords_train)):
-            cplex_m = CplexModel1(self.N, self.flag)
+            cplex_m = CplexModel1(self.N, self.case_flag)
             exact = self.get_exact_value(cplex_m, self.coords_train[l], self.costs_train[l])
             for length in ts_list_length:
                 for i in max_iter:
-                    ls_m = LocalSearch(self.N, self.flag, length, i)
+                    ls_m = TabuSearch(self.N, self.case_flag, length, i, self.init_path_flag)
                     heur = self.get_heur_value(ls_m, self.coords_train[l], self.costs_train[l])
 
                     if exact == heur:
                         nodes_length_iter_train[self.N][(length, i)] += 1
             cplex_m.m.clear()
-        # print(f'CHECK {self.N} -- {nodes_length_iter_train[self.N]}')
+        # print(f'CHECK {self.nodes_number} -- {nodes_length_iter_train[self.nodes_number]}')
 
     def test(self,nodes_length_iter_train, nodes_length_iter_params, nodes_length_iter_test):
         nodes_length_iter_params[self.N] = {}
@@ -130,10 +131,10 @@ class Calibration:
         nodes_length_iter_test[self.N][(length, i)] = 0
 
         for l in range(len(self.coords_test)):
-            cplex_m = CplexModel1(self.N, self.flag)
+            cplex_m = CplexModel1(self.N, self.case_flag)
             exact = self.get_exact_value(cplex_m, self.coords_test[l], self.costs_test[l])
 
-            ls_m = LocalSearch(self.N, self.flag, length, i)
+            ls_m = TabuSearch(self.N, self.case_flag, length, i, self.init_path_flag)
             heur = self.get_heur_value(ls_m, self.coords_test[l], self.costs_test[l])
 
             if exact == heur:
@@ -141,26 +142,5 @@ class Calibration:
             cplex_m.m.clear()
 
 
-# if __name__ == '__main__':
-#     nodes_length_iter_train = {}
-#     nodes_length_iter_params = {}
-#     nodes_length_iter_test = {}
-#
-#     with Progress() as progress:
-#         nodes_pr = progress.add_task("[cyan]CALIBRATING. Number of nodes", total=len(nodes_number_values))
-#
-#         for nodes in nodes_number_values:
-#             calibr = Calibration('reg', nodes)
-#             calibr.train()
-#             calibr.test()
-#
-#             progress.update(nodes_pr, completed=nodes - 3 + 1)
-#
-#     df_train = pd.DataFrame.from_dict(nodes_length_iter_train, orient='index')
-#     df_train.to_excel("train_info.xlsx")
-#
-#     df_params = pd.DataFrame.from_dict(nodes_length_iter_params, orient='index')
-#     df_params.to_excel("params_info.xlsx")
-#
-#     df_test = pd.DataFrame.from_dict(nodes_length_iter_test, orient='index')
-#     df_test.to_excel("test_info.xlsx")
+if __name__ == '__main__':
+    calibrate('reg', 'greedy')

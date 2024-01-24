@@ -9,10 +9,23 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 
 
+def solve_m2(nodes_number, case_flag):
+    mdl = CplexModel2(nodes_number, case_flag)
+    mdl.optimize_model()
+    # print(mdl.costs)
+
+    print(f'Starting node: {mdl.starting_node}')
+    sol = mdl.get_solution()
+    print(f'Path: {sol}')
+    print(f'Obj value = {mdl.solved_m.get_objective_value()}')
+
+    mdl.plot_path()
+
+
 class CplexModel2:
 
-    def __init__(self, N, flag):
-        self.flag = flag
+    def __init__(self, N, case_flag):
+        self.case_flag = case_flag
         self.N = N
         self.nodes, self.nodes_wo_starting_node, self.arcs, self.starting_node = get_nodes_arcs_starting_node(self.N)
 
@@ -32,14 +45,13 @@ class CplexModel2:
         self.solving_end = None
 
     def choose_case(self):
-        if self.flag == 'uni':
+        if self.case_flag == 'uni':
             self.coords, self.costs = get_distances_UNI(self.N, max_x, max_y)
-        elif self.flag == 'reg':
+        elif self.case_flag == 'reg':
             self.coords, self.costs = get_distances_REG(self.N, max_x, max_y)
         return self.coords, self.costs
 
     def add_vars(self):
-        # print(f'NUMBER OF NODES = {self.N}')
         # print('Creating variables...')
 
         self.y = self.m.integer_var_dict(keys=self.nodes,
@@ -125,14 +137,4 @@ class CplexModel2:
 
 
 if __name__ == '__main__':
-    mdl = CplexModel2(7, 'uni')
-    mdl.optimize_model()
-
-    print(mdl.costs)
-
-    print(f'Starting node: {mdl.starting_node}')
-    sol = mdl.get_solution()
-    print(f'Path: {sol}')
-    print(f'Obj value = {mdl.solved_m.get_objective_value()}')
-
-    mdl.plot_path()
+    solve_m2(9, 'reg')

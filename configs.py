@@ -1,6 +1,10 @@
-N = 5  # number of nodes
+nodes_number = 5  # number of nodes
 max_x = 100
 max_y = 100
+case_flag = 'uni'
+init_path_flag = 'greedy'
+ts_length = 7
+max_iter_number = 5
 
 # UNIFORM CASE
 
@@ -13,7 +17,7 @@ dist_sq = 20  # distance between areas, Ox
 dist_line = 20  # distance between all areas and a line, Oy
 
 # EVALUATION
-max_N = 30  # number of nodes for model performance evaluation
+max_N = 15  # number of nodes for model performance evaluation
 nodes_number_values = tuple(range(4, max_N))  # tuple of different values: (4, ... , max_N - 1)
 tests_number = 10  # numer of tests we run for each number of nodes
 curr_avr_time = -1  # starting value of average computing time for performance evaluation
