@@ -1,43 +1,21 @@
 nodes_number = 5  # number of nodes
-max_x = 100
-max_y = 100
-case_flag = 'uni'
-init_path_flag = 'greedy'
-ts_length = 7
-max_iter_number = 5
-
-# UNIFORM CASE
+max_x = 100  # max x-coordinate value
+max_y = 100  # max y-coordinate value
+case_flag = 'uni'  # case indicator, 'uni' or 'reg'
+init_path_flag = 'greedy'  # initial path indicator, 'greedy' or 'random'
+ts_length = 7  # TL length
+max_iter_number = 5  # max number of TS iterations
 
 
 # REGULAR CASE
-line_fract = 6  # number of distinct regions (rectangles)
-dist_x = 3  # distance between nodes in an area, Ox = max_x // reg_areas_number //
-dist_y = 6  # distance between nodes in an area, Oy
-dist_sq = 20  # distance between areas, Ox
-dist_line = 20  # distance between all areas and a line, Oy
+line_fract = 6  # fraction of nodes for the top line
 
-# EVALUATION
-max_N = 15  # number of nodes for model performance evaluation
-nodes_number_values = tuple(range(4, max_N))  # tuple of different values: (4, ... , max_N - 1)
-tests_number = 10  # numer of tests we run for each number of nodes
-curr_avr_time = -1  # starting value of average computing time for performance evaluation
+# PERFORMANCE EVALUATION
+max_N = 7  # number of nodes for model performance evaluation
+nodes_number_values = tuple(range(4, max_N + 1))  # tuple of node number values: (4, ... , max_N)
+tests_number = 10  # numer of tests for each number of nodes
 
 # CALIBRATION
-ts_list_length = tuple(range(max_N))
-max_iter = tuple(range(10))
-samples_number = 30
-
-# comp_time_intervals = [[0, 0.1], [0.1 + 1e-5, 0.5], [0.5 + 1e-5, 1], [1 + 1e-5, 5], [5 + 1e-5, 10]]
-comp_time_intervals = [[0, 0.1],
-                       [0.1 + 1e-5, 0.5],
-                       [0.5 + 1e-5, 1],
-                       [1 + 1e-5, 5],
-                       [5 + 1e-5, 10]]  # time intervals under consideration
-avr_time_limit = comp_time_intervals[-1][-1] + 1e-5  # limit for average computing time
-
-# for visualization
-labeling_colors = ['darkseagreen', 'skyblue', 'mediumpurple', 'palevioletred', 'darksalmon', 'tomato']
-color_legend = {}
-for i in range(len(comp_time_intervals)):
-    color_legend[f'up to {comp_time_intervals[i][-1]} sec'] = labeling_colors[i]
-color_legend[f'more than {comp_time_intervals[-1][-1]} sec'] = labeling_colors[-1]
+ts_list_length = tuple(range(1, max_N + 1))  # tuple of TL length values
+max_iter = tuple(range(1, 4 * max_N + 1))  # tuple of max number of TS iterations values
+samples_number = 30  # dataset size

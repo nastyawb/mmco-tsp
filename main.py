@@ -16,5 +16,5 @@ if __name__ == '__main__':
     # solve_m2(nodes_number, case_flag)
     # solve_ts(nodes_number, case_flag, init_path_flag, ts_length, max_iter_number)
     # calibrate(case_flag, init_path_flag)
-    evaluate(init_path_flag)
-    # compare_obj_values(init_path_flag)
+    # evaluate(init_path_flag)
+    compare_obj_values('greedy')

@@ -60,86 +60,98 @@ class Calibration:
         elif self.case_flag == 'reg':
             self.create_samples_REG()
 
-    def create_samples_UNI(self):
+    def create_samples_UNI(self):  # creating samples_number different UNI samples
         while len(self.samples_coords) < samples_number:
             coords, costs = get_distances_UNI(self.N, max_x, max_y)
             if coords not in self.samples_coords:
                 self.samples_coords.append(coords)
                 self.samples_costs.append(costs)
 
-    def create_samples_REG(self):
+    def create_samples_REG(self):  # creating samples_number different REG samples
         while len(self.samples_coords) < samples_number:
             coords, costs = get_distances_REG(self.N, max_x, max_y)
             if coords not in self.samples_coords:
                 self.samples_coords.append(coords)
                 self.samples_costs.append(costs)
 
-    def split_half(self, lst):
+    def split_half(self, lst):  # splitting list in half
         return lst[:len(lst) // 2], lst[len(lst) // 2:]
 
-    def split_train_test(self):
+    def split_train_test(self):  # splitting dataset in training and test sets
         self.coords_train, self.coords_test = self.split_half(self.samples_coords)
         self.costs_train, self.costs_test = self.split_half(self.samples_costs)
 
-    def get_exact_value(self, cplex_m, coords, costs):
-        cplex_m.nodes, cplex_m.nodes_wo_starting_node, cplex_m.arcs, cplex_m.starting_node = self.nodes, \
-            self.nodes_wo_starting_node, self.arcs, self.starting_node
-        cplex_m.coords = coords
-        cplex_m.costs = costs
-        cplex_m.optimize_model()
-        return cplex_m.obj_val
-
-    def get_heur_value(self, ls_m, coords, costs):
-        ls_m.nodes, ls_m.nodes_wo_starting_node, ls_m.arcs, ls_m.starting_node = self.nodes, \
-            self.nodes_wo_starting_node, self.arcs, self.starting_node
-        ls_m.coords = coords
-        ls_m.costs = costs
-        ls_m.optimize_model()
-        return ls_m.obj_val
+    def get_obj_value(self, m, coords, costs):
+        m.nodes, m.nodes_wo_starting_node, m.arcs, m.starting_node = self.nodes, \
+            self.nodes_wo_starting_node, self.arcs, self.starting_node  # fixing model parameters
+        m.coords = coords
+        m.costs = costs
+        m.optimize_model()  # solving problem
+        return m.obj_val
 
     def train(self, nodes_length_iter_train):
         self.choose_case()
         self.split_train_test()
-        # accepted_length_iters = []
-        nodes_length_iter_train[self.N] = {}
-        number_of_eq = {}
+        nodes_length_iter_train[self.N] = {}  # dictionary for training stage information
+
         for length in ts_list_length:
             for i in max_iter:
-                nodes_length_iter_train[self.N][(length, i)] = 0
-        # print(f'CHECK {self.nodes_number} -- {nodes_length_iter_train[self.nodes_number]}')
+                nodes_length_iter_train[self.N][(length, i)] = 0  # setting counters
         for l in range(len(self.coords_train)):
             cplex_m = CplexModel1(self.N, self.case_flag)
-            exact = self.get_exact_value(cplex_m, self.coords_train[l], self.costs_train[l])
+            exact = self.get_obj_value(cplex_m, self.coords_train[l], self.costs_train[l])  # solving Cplex
             for length in ts_list_length:
                 for i in max_iter:
-                    ls_m = TabuSearch(self.N, self.case_flag, length, i, self.init_path_flag)
-                    heur = self.get_heur_value(ls_m, self.coords_train[l], self.costs_train[l])
+                    ts_m = TabuSearch(self.N, self.case_flag, length, i, self.init_path_flag)
+                    heur = self.get_obj_value(ts_m, self.coords_train[l], self.costs_train[l])  # solving TS
 
                     if exact == heur:
-                        nodes_length_iter_train[self.N][(length, i)] += 1
+                        nodes_length_iter_train[self.N][(length, i)] += 1  # if equal, updating counters
             cplex_m.m.clear()
-        # print(f'CHECK {self.nodes_number} -- {nodes_length_iter_train[self.nodes_number]}')
 
-    def test(self,nodes_length_iter_train, nodes_length_iter_params, nodes_length_iter_test):
-        nodes_length_iter_params[self.N] = {}
-        nodes_length_iter_params[self.N]['length'] = max(nodes_length_iter_train[self.N], key=nodes_length_iter_train[self.N].get)[0]
-        nodes_length_iter_params[self.N]['max iter'] = max(nodes_length_iter_train[self.N], key=nodes_length_iter_train[self.N].get)[1]
+    def test(self, nodes_length_iter_train, nodes_length_iter_params, nodes_length_iter_test):
+        # sorting dictionary for training stage information:
+        # value (ascending),
+        # second value of key (descending)
+        train_info_sorted = {key: value for key, value in sorted(nodes_length_iter_train[self.N].items(),
+                                                                 key=lambda item: (item[1], -item[0][1]))}
 
-        nodes_length_iter_test[self.N] = {}
-        length = nodes_length_iter_params[self.N]['length']
-        i = nodes_length_iter_params[self.N]['max iter']
-        nodes_length_iter_test[self.N][(length, i)] = 0
+        nodes_length_iter_test[self.N] = {}  # dictionary for testing stage information
+        nodes_length_iter_params[self.N] = {}  # dict for resulting parameters
 
-        for l in range(len(self.coords_test)):
-            cplex_m = CplexModel1(self.N, self.case_flag)
-            exact = self.get_exact_value(cplex_m, self.coords_test[l], self.costs_test[l])
+        calibrated = False
+        best_ind = -1  # starting from the best according to training stage
+        while not calibrated:
+            # if already more than one third of pairs are considered, stopping on the best according to training stage
+            if -best_ind >= len(train_info_sorted) // 3:
+                nodes_length_iter_params[self.N]['length'] = list(train_info_sorted.keys())[-1][0]
+                nodes_length_iter_params[self.N]['max iter'] = list(train_info_sorted.keys())[-1][1]
 
-            ls_m = TabuSearch(self.N, self.case_flag, length, i, self.init_path_flag)
-            heur = self.get_heur_value(ls_m, self.coords_test[l], self.costs_test[l])
+                calibrated = True
+            else:
+                length = list(train_info_sorted.keys())[best_ind][0]
+                i = list(train_info_sorted.keys())[best_ind][1]
+                nodes_length_iter_test[self.N][(length, i)] = 0
 
-            if exact == heur:
-                nodes_length_iter_test[self.N][(length, i)] += 1
-            cplex_m.m.clear()
+                for l in range(len(self.coords_test)):
+                    cplex_m = CplexModel1(self.N, self.case_flag)
+                    exact = self.get_obj_value(cplex_m, self.coords_test[l], self.costs_test[l])  # solving Cplex
+
+                    ts_m = TabuSearch(self.N, self.case_flag, length, i, self.init_path_flag)
+                    heur = self.get_obj_value(ts_m, self.coords_test[l], self.costs_test[l])  # solving TS
+
+                    if exact == heur:
+                        nodes_length_iter_test[self.N][(length, i)] += 1  # if equal, updating counters
+                    cplex_m.m.clear()
+
+                # avoiding over/underfitting
+                if nodes_length_iter_test[self.N][(length, i)] < 0.8 * nodes_length_iter_train[self.N][(length, i)]:
+                    best_ind -= 1
+                else:
+                    nodes_length_iter_params[self.N]['length'] = length
+                    nodes_length_iter_params[self.N]['max iter'] = i
+
+                    calibrated = True
 
 
 if __name__ == '__main__':

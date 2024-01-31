@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 def solve_m1(nodes_number, case_flag):
     mdl = CplexModel1(nodes_number, case_flag)
     mdl.optimize_model()
-    # print(mdl.costs)
+    print(mdl.costs)
 
     print(f'Starting node: {mdl.starting_node}')
     sol = mdl.get_solution()
@@ -51,14 +51,10 @@ class CplexModel1:
         return self.coords, self.costs
 
     def add_vars(self):
-        # print('Creating variables...')
-
         self.x = self.m.integer_var_dict(keys=self.arcs, lb={_: 0 for _ in self.arcs}, name='flow_')
         self.y = self.m.binary_var_dict(keys=self.arcs, name='if_flow_')
 
     def add_constraints(self):
-        # print('Adding constraints...')
-
         # incoming units - outcoming units == 1
         self.m.add_constraints((self.m.sum(self.x[(i, k)] for i in self.nodes if (i, k) in self.arcs) -
                                 self.m.sum(self.x[(k, j)] for j in self.nodes if
@@ -85,8 +81,6 @@ class CplexModel1:
                                       if j != self.starting_node])
 
     def set_objective_function(self):
-        # print('Setting objective function...')
-
         self.m.minimize(self.m.sum(self.costs[(i, j)] * self.y[(i, j)] for (i, j) in self.arcs))
 
     def optimize_model(self):
@@ -95,16 +89,16 @@ class CplexModel1:
         self.add_constraints()
         # self.m.export_as_lp('tsp.lp')
 
-        # print('Solving the model...')
-        self.solving_start = datetime.now()
+        self.solving_start = datetime.now()  # for evaluation
         self.solved_m = self.m.solve(log_output=False)
-        self.solving_end = datetime.now()
+        self.solving_end = datetime.now()  # for evaluation
         self.obj_val = self.solved_m.get_objective_value()
         # self.solved_m.display()
 
     def get_solution(self):
         self.solution = {k: self.x[k].solution_value for k in self.arcs if self.x[k].solution_value != 0}
-        self.solution_sorted = [_ for _ in dict(sorted(self.solution.items(), key=operator.itemgetter(1), reverse=True)).keys()]
+        self.solution_sorted = [_ for _ in dict(sorted(self.solution.items(),
+                                                       key=operator.itemgetter(1), reverse=True)).keys()]
         self.path.append(self.solution_sorted[0][0])
         for i in self.solution_sorted:
             if self.path[-1] == i[0]:
@@ -116,6 +110,7 @@ class CplexModel1:
         x_coord = [self.coords[node][0] for node in self.path]
         y_coord = [self.coords[node][1] for node in self.path]
 
+        plt.figure(figsize=(5, 4))
         plt.plot(x_coord, y_coord, '-o', c='indianred', zorder=2)
         plt.xlabel('x')
         plt.ylabel('y')
@@ -134,4 +129,4 @@ class CplexModel1:
 
 
 if __name__ == '__main__':
-    solve_m1(9, 'reg')
+    solve_m1(5, 'reg')

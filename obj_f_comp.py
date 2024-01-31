@@ -17,33 +17,40 @@ from rich.progress import Progress
 
 def compare_obj_values(init_path_flag):
     f_vals_UNI, f_vals_REG = {}, {}
-    tl_params_UNI = calibrate('uni', init_path_flag)
-    tl_params_REG = calibrate('reg', init_path_flag)
+    # tl_params_UNI = calibrate('uni', init_path_flag)
+    # tl_params_REG = calibrate('reg', init_path_flag)
 
     with Progress() as progress:
         nodes_pr = progress.add_task("[cyan]Evaluating obj. value gap for each number of nodes",
                                      total=len(nodes_number_values))
         for i in nodes_number_values:
-
-            obj_f_vals = ObjFunction(i, 'uni', init_path_flag,
-                                     tl_params_UNI[i]['length'], tl_params_UNI[i]['max iter'])
+            # UNIFORM
+            # obj_f_vals = ObjFunction(i, 'uni', init_path_flag,
+            #                          tl_params_UNI[i]['length'], tl_params_UNI[i]['max iter'])
+            obj_f_vals = ObjFunction(i, 'uni', init_path_flag, i, i // 3 + 1)
             obj_f_vals.get_stats()
 
+            # checking Cplex solutions equality
             if round(list(obj_f_vals.m_val.values())[0], 2) != round(list(obj_f_vals.m_val.values())[1], 2):
                 print(
                     f'Cplex models error: {round(list(obj_f_vals.m_val.values())[0], 2)} != {round(list(obj_f_vals.m_val.values())[1], 2)}')
             else:
+                # if equal, computing gap
                 f_vals_UNI[i] = (list(obj_f_vals.m_val.values())[-1] - list(obj_f_vals.m_val.values())[0]) / \
                                 list(obj_f_vals.m_val.values())[0] * 100
 
-            obj_f_vals = ObjFunction(i, 'reg', init_path_flag,
-                                     tl_params_REG[i]['length'], tl_params_REG[i]['max iter'])
+            # REGULAR
+            # obj_f_vals = ObjFunction(i, 'reg', init_path_flag,
+            #                          tl_params_REG[i]['length'], tl_params_REG[i]['max iter'])
+            obj_f_vals = ObjFunction(i, 'reg', init_path_flag, i, i // 3)
             obj_f_vals.get_stats()
 
+            # checking Cplex solutions equality
             if round(list(obj_f_vals.m_val.values())[0], 2) != round(list(obj_f_vals.m_val.values())[1], 2):
                 print(
                     f'Cplex models error: {round(list(obj_f_vals.m_val.values())[0], 2)} != {round(list(obj_f_vals.m_val.values())[1], 2)}')
             else:
+                # if equal, computing gap
                 f_vals_REG[i] = (list(obj_f_vals.m_val.values())[-1] - list(obj_f_vals.m_val.values())[0]) / \
                                 list(obj_f_vals.m_val.values())[0] * 100
 
@@ -76,7 +83,7 @@ def plot_res(dct_UNI, dct_REG):
     ax.set_title('Gap between exact and heuristic solutions per each number of nodes')
     ax.set_xticks(x + width, nodes_numbers)
     ax.legend(loc='upper left', ncols=2)
-    ax.set_ylim(0, 50)
+    # ax.set_ylim(0, 50)
     plt.grid(axis='y', color='silver', linestyle='--', linewidth=0.5, zorder=1)
     plt.show()
 
@@ -104,21 +111,21 @@ class ObjFunction:
             self.coords, self.costs = get_distances_REG(self.n, max_x, max_y)
         return self.coords, self.costs
 
-    def set_model_params(self, m):
+    def set_model_params(self, m):  # fixing parameters
         m.nodes, m.nodes_wo_starting_node, m.arcs, m.starting_node = self.nodes, \
             self.nodes_wo_starting_node, self.arcs, self.starting_node
         m.coords = self.coords
         m.costs = self.costs
 
-    def get_obj_val(self, m):
+    def get_obj_val(self, m):  # computing solution
         self.set_model_params(m)
         m.optimize_model()
         self.m_val[m] = m.obj_val
 
-    def get_stats(self):
+    def get_stats(self):  # collecting statistics
         for m in self.ms:
             self.get_obj_val(m)
 
 
 if __name__ == '__main__':
-    compare_obj_values('random')
+    compare_obj_values('greedy')

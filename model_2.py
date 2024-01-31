@@ -52,8 +52,6 @@ class CplexModel2:
         return self.coords, self.costs
 
     def add_vars(self):
-        # print('Creating variables...')
-
         self.y = self.m.integer_var_dict(keys=self.nodes,
                                          lb={_: 0 for _ in self.nodes},
                                          ub={_: self.N for _ in self.nodes},
@@ -62,11 +60,9 @@ class CplexModel2:
                                         name='if__flow_')
 
     def add_constraints(self):
-        # print('Adding constraints...')
-
         # enter each node once
         self.m.add_constraints((self.m.sum(self.x[(i, j)] for j in self.nodes if (i, j) in self.arcs) == 1
-                                for i in self.nodes),
+                                for i in self.nodes_wo_starting_node),
                                names=[f'shipping to 1 arc, node {i}' for i in self.nodes])
 
         # leave each node once
@@ -77,22 +73,14 @@ class CplexModel2:
         # Subtour breaking:
         # if no arc 'i<-->j', then any order 'i<-->j'
         # otherwise, 'first i is visited, then j'
-        self.m.add_constraints((self.y[i] - self.y[j] + 1 <= (self.N - 1) * (1 - self.x[(i, j)])
-                                for i in self.nodes_wo_starting_node
+        self.m.add_constraints((self.y[i] - self.y[j] + 1 <= self.N * (1 - self.x[(i, j)])
+                                for i in self.nodes
                                 for j in self.nodes_wo_starting_node
-                                if i != j),
+                                if (i, j) in self.arcs),
                                names=[f'flow__units, arc{(i, j)}' for (i, j) in self.arcs
                                       if j != self.starting_node])
 
-        self.m.add_constraints((1 <= self.y[i])
-                               for i in self.nodes_wo_starting_node)
-
-        self.m.add_constraints((self.y[i] <= self.N - 1)
-                               for i in self.nodes_wo_starting_node)
-
     def set_objective_function(self):
-        # print('Setting objective function...')
-
         self.m.minimize(self.m.sum(self.costs[(i, j)] * self.x[(i, j)] for (i, j) in self.arcs))
 
     def optimize_model(self):
@@ -101,16 +89,16 @@ class CplexModel2:
         self.add_constraints()
         # self.m.export_as_lp('tsp2.lp')
 
-        # print('Solving the model...')
-        self.solving_start = datetime.now()
+        self.solving_start = datetime.now()  # for evaluation
         self.solved_m = self.m.solve(log_output=False)
-        self.solving_end = datetime.now()
+        self.solving_end = datetime.now()  # for evaluation
         self.obj_val = self.solved_m.get_objective_value()
         # self.solved_m.display()
 
     def get_solution(self):
         self.solution = {k: self.y[k].solution_value for k in self.nodes}
-        self.solution_sorted = [_ for _ in dict(sorted(self.solution.items(), key=operator.itemgetter(1), reverse=False)).keys()]
+        self.solution_sorted = [_ for _ in dict(sorted(self.solution.items(),
+                                                       key=operator.itemgetter(1), reverse=False)).keys()]
         self.path = self.solution_sorted
 
         return self.path
@@ -119,6 +107,7 @@ class CplexModel2:
         x_coord = [self.coords[node][0] for node in self.path]
         y_coord = [self.coords[node][1] for node in self.path]
 
+        plt.figure(figsize=(5, 4))
         plt.plot(x_coord, y_coord, '-o', c='indianred', zorder=2)
         plt.xlabel('x')
         plt.ylabel('y')
@@ -137,4 +126,4 @@ class CplexModel2:
 
 
 if __name__ == '__main__':
-    solve_m2(9, 'reg')
+    solve_m2(20, 'reg')
